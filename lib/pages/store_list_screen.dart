@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:grocery_app/pages/add_store_screen.dart';
+import 'package:grocery_app/pages/store_item_list_screen.dart';
 import 'package:grocery_app/utils/constanst.dart';
 import 'package:grocery_app/view_models/add_store_view_model.dart';
 import 'package:grocery_app/view_models/store_list_view_model.dart';
 import 'package:grocery_app/view_models/store_view_model.dart';
 import 'package:grocery_app/widgets/empty_results_widget.dart';
+import 'package:grocery_app/widgets/item_count_widget.dart';
 import 'package:provider/provider.dart';
 
 class StoreListPage extends StatefulWidget {
@@ -37,16 +39,33 @@ class _StoreListPage extends State<StoreListPage> {
         itemCount: stores.length,
         itemBuilder: (context, index) {
           final store = stores[index];
-          return _buildListItem(store);
+          return _buildListItem(store, (store) {
+            _navigateToStoreItems(context, store);
+          });
         });
   }
 
-  Widget _buildListItem(StoreViewModel store) {
+  Widget _buildListItem(
+      StoreViewModel store, void Function(StoreViewModel) onStoreSelected) {
     return ListTile(
-      title: Text(store.name,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-      subtitle: Text(store.address),
-    );
+        onTap: () => onStoreSelected(store),
+        title: Text(store.name,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+        subtitle: Text(store.address),
+        trailing: FutureBuilder(
+          future: store.itemsCountAsync,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            } else {
+              if (snapshot.hasData) {
+                return ItemCountWidget(count: snapshot.data!);
+              } else {
+                return const SizedBox.shrink();
+              }
+            }
+          },
+        ));
   }
 
   void _navigateToAddStorePage(BuildContext context) {
@@ -77,5 +96,15 @@ class _StoreListPage extends State<StoreListPage> {
           ],
         ),
         body: _buildBody());
+  }
+
+  void _navigateToStoreItems(BuildContext context, StoreViewModel store) async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => StoreItemListPage(),
+            settings: RouteSettings(arguments: store)));
+
+    setState(() {});
   }
 }
